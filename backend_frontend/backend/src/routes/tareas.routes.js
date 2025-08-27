@@ -1,16 +1,13 @@
-const express = require('express');
-const auth = require('../middlewares/auth');
-const { crearTarea, listarTareasUsuario, actualizarTarea, eliminarTarea, asignarTarea } = require('../controllers/tareas.controller');
-const { tareaCreateValidator, tareaUpdateValidator, asignarValidator } = require('../utils/validators');
-const checkErrors = require('../utils/checkErrors');
-
+// src/routes/tareas.routes.js
+const express = require("express");
 const router = express.Router();
+const tareasController = require("../controllers/tareas.controller");
+const { verificarToken } = require("../middlewares/auth");
 
-router.post('/', auth, tareaCreateValidator, checkErrors, crearTarea);
-router.get('/', auth, listarTareasUsuario);
-router.put('/:id', auth, tareaUpdateValidator, checkErrors, actualizarTarea);
-router.delete('/:id', auth, eliminarTarea);
-router.put('/:id/asignar', auth, asignarValidator, checkErrors, asignarTarea);
+router.post("/", verificarToken, tareasController.crearTarea);
+router.get("/", verificarToken, tareasController.listarTareas);
+router.put("/:id", verificarToken, tareasController.actualizarTarea);
+router.delete("/:id", verificarToken, tareasController.eliminarTarea);
+router.put("/:id/asignar", verificarToken, tareasController.asignarTarea);
 
 module.exports = router;
- 

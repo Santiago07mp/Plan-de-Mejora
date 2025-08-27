@@ -1,19 +1,27 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+// src/middlewares/auth.js
+const jwt = require("jsonwebtoken");
 
-const auth = (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token no proporcionado' });
+const verificarToken = (req, res, next) => {
+  const token = req.header("Authorization")?.replace("Bearer ", "");
+  
+  if (!token) {
+    return res.status(401).json({ error: "Acceso denegado. Token no proporcionado." });
   }
-  const token = header.split(' ')[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecreto');
-    req.user = { id: decoded.id, rol: decoded.rol };
+    const verificado = jwt.verify(token, "secreto123");
+    req.usuario = verificado;
     next();
-  } catch (e) {
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+  } catch (error) {
+    res.status(400).json({ error: "Token inválido" });
   }
 };
 
-module.exports = auth;
+const verificarAdmin = (req, res, next) => {
+  if (req.usuario.rol !== "admin") {
+    return res.status(403).json({ error: "Acceso denegado. Se requieren permisos de administrador." });
+  }
+  next();
+};
+
+module.exports = { verificarToken, verificarAdmin };

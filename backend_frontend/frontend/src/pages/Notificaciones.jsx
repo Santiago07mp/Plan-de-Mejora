@@ -1,35 +1,31 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 
-function Notificaciones() {
+export default function Notificaciones() {
+  const { token } = useContext(AuthContext);
   const [notificaciones, setNotificaciones] = useState([]);
 
-  const cargar = async () => {
-    const res = await api.get("/notificaciones");
-    setNotificaciones(res.data);
-  };
-
-  const marcarLeida = async (id) => {
-    await api.put(`/notificaciones/${id}/leida`);
-    cargar();
-  };
-
   useEffect(() => {
-    cargar();
-  }, []);
+    const fetchNotificaciones = async () => {
+      const res = await fetch("http://localhost:3000/api/notificaciones", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setNotificaciones(data);
+    };
+    fetchNotificaciones();
+  }, [token]);
 
   return (
-    <div>
+    <div className="container mt-5">
       <h2>Notificaciones</h2>
-      {notificaciones.map((n) => (
-        <div key={n.id_notificacion}>
-          <p>{n.mensaje}</p>
-          <p>{n.leida ? "Leída" : "No leída"}</p>
-          {!n.leida && <button onClick={() => marcarLeida(n.id_notificacion)}>Marcar como leída</button>}
-        </div>
-      ))}
+      <ul className="list-group">
+        {notificaciones.map(n => (
+          <li key={n.id_notificacion} className="list-group-item">
+            {n.mensaje} {n.leido ? "(Leído)" : "(Pendiente)"}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
-
-export default Notificaciones;

@@ -1,12 +1,10 @@
-const express = require('express');
-const auth = require('../middlewares/auth');
-const soloAdmin = require('../middlewares/roles');
-const { reporteTareasCompletadas } = require('../controllers/reportes.controller');
-const { reporteFechasValidator } = require('../utils/validators');
-const checkErrors = require('../utils/checkErrors');
-
+// src/routes/reportes.routes.js
+const express = require("express");
 const router = express.Router();
+const reportesController = require("../controllers/reportes.controller");
+const { verificarToken, verificarAdmin } = require("../middlewares/auth");
 
-router.get('/tareas', auth, soloAdmin, reporteFechasValidator, checkErrors, reporteTareasCompletadas);
+// Ruta para generar reportes de tareas (solo admin)
+router.get("/tareas", verificarToken, verificarAdmin, reportesController.generarReporteTareas);
 
 module.exports = router;

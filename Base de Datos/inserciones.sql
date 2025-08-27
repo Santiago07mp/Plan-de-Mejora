@@ -1,20 +1,34 @@
--- Inserciones en usuarios
-INSERT INTO usuarios (nombre, correo, contraseña, rol) VALUES
-('Administrador General', 'admin@correo.com', '$2a$10$abcd1234abcd1234abcd12', 'admin'), -- hash bcrypt simulado
-('Juan Pérez', 'juan@correo.com', '$2a$10$abcd1234abcd1234abcd12', 'usuario'),
-('María Gómez', 'maria@correo.com', '$2a$10$abcd1234abcd1234abcd12', 'usuario'),
-('Carlos Ruiz', 'carlos@correo.com', '$2a$10$abcd1234abcd1234abcd12', 'usuario');
+-- ==================================================
+-- USUARIOS DE PRUEBA
+-- ==================================================
+INSERT INTO usuarios (nombre, correo, password, rol) VALUES
+('Administrador', 'admin@demo.com', '$2b$10$yha0I/rEhYGRwHkSfo20B.peu7Y4.T.zj2Njn3O4XB4drnLxIRgJK', 'admin'),
+('Juan Pérez', 'juan@demo.com', '$2b$10$d5V.Y/RjcDDvVu4AXOyhEeM4NPLx9.SjaPUdzuW/sK5CA2sSK18rW', 'usuario'),
+('María López', 'maria@demo.com', '$2a$10$abcd1234abcd1234abcd12', 'usuario'),
+('Carlos Ramírez', 'carlos@demo.com', '$2a$10$abcd1234abcd1234abcd12', 'usuario');
 
--- Inserciones en tareas
-INSERT INTO tareas (titulo, descripcion, estado, fecha_creacion, fecha_vencimiento, id_usuario_creador, id_usuario_asignado) VALUES
-('Revisar informes', 'Revisar los informes de ventas de este mes.', 'pendiente', NOW(), '2025-09-10', 1, 2),
-('Actualizar inventario', 'Actualizar la base de datos del inventario.', 'en progreso', NOW(), '2025-09-15', 1, 3),
-('Preparar presentación', 'Preparar diapositivas para la reunión de la próxima semana.', 'pendiente', NOW(), NULL, 2, 4),
-('Respaldo del sistema', 'Hacer copia de seguridad completa del sistema.', 'completada', NOW(), '2025-08-20', 1, 2);
+-- ==================================================
+-- TAREAS DE PRUEBA
+-- ==================================================
+INSERT INTO tareas (titulo, descripcion, estado, fecha_vencimiento, id_usuario_creador, id_usuario_asignado) VALUES
+('Configurar servidor', 'Instalar Node.js y configurar entorno en el servidor.', 'pendiente', '2025-09-10', 1, 2),
+('Diseñar frontend', 'Crear componentes principales en React.', 'en progreso', '2025-09-15', 1, 3),
+('Redactar documentación', 'Generar documentación del API en Swagger.', 'pendiente', '2025-09-20', 2, 4),
+('Pruebas unitarias', 'Implementar Jest para validar controladores.', 'completada', '2025-08-25', 3, 2);
 
--- Inserciones en notificaciones
-INSERT INTO notificaciones (mensaje, fecha, leida, id_usuario_destino) VALUES
-('Tienes una nueva tarea asignada: Revisar informes', NOW(), FALSE, 2),
-('Tienes una nueva tarea asignada: Actualizar inventario', NOW(), FALSE, 3),
-('Tarea completada: Respaldo del sistema', NOW(), TRUE, 1),
-('Nueva tarea pendiente: Preparar presentación', NOW(), FALSE, 4);
+-- ==================================================
+-- NOTIFICACIONES DE PRUEBA
+-- ==================================================
+INSERT INTO notificaciones (id_usuario, mensaje, leido) VALUES
+(2, 'Se te asignó la tarea: Configurar servidor', FALSE),
+(3, 'Se te asignó la tarea: Diseñar frontend', FALSE),
+(4, 'Nueva tarea asignada: Redactar documentación', FALSE),
+(2, 'La tarea "Pruebas unitarias" fue marcada como completada', TRUE);
+
+-- ==================================================
+-- LOG DE CAMBIOS DE ROLES
+-- ==================================================
+INSERT INTO roles_log (id_admin, id_usuario, rol_anterior, rol_nuevo) VALUES
+(1, 2, 'usuario', 'admin'),
+(1, 3, 'usuario', 'usuario'),
+(1, 4, 'usuario', 'usuario');

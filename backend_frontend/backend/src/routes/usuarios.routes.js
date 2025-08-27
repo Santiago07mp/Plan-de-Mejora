@@ -1,15 +1,16 @@
-const express = require('express');
-const { registrar, login, listarUsuarios, cambiarRol } = require('../controllers/usuarios.controller');
-const auth = require('../middlewares/auth');
-const soloAdmin = require('../middlewares/roles');
-const { registroValidator, loginValidator } = require('../utils/validators');
-const checkErrors = require('../utils/checkErrors');
-
+// src/routes/usuarios.routes.js
+const express = require("express");
 const router = express.Router();
+const usuariosController = require("../controllers/usuarios.controller");
+// CORREGIR: cambiar 'middleware' por 'middlewares'
+const { verificarToken, verificarAdmin } = require("../middlewares/auth");
 
-router.post('/registro', registroValidator, checkErrors, registrar);
-router.post('/login', loginValidator, checkErrors, login);
-router.get('/', auth, soloAdmin, listarUsuarios);
-router.put('/:id/rol', auth, soloAdmin, cambiarRol);
+// Registro y login (públicos)
+router.post("/registro", usuariosController.registrarUsuario);
+router.post("/login", usuariosController.loginUsuario);
+
+// Rutas protegidas
+router.get("/", verificarToken, verificarAdmin, usuariosController.listarUsuarios);
+router.put("/:id/rol", verificarToken, verificarAdmin, usuariosController.cambiarRol);
 
 module.exports = router;

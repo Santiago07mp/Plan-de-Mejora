@@ -1,12 +1,10 @@
-const express = require('express');
-const auth = require('../middlewares/auth');
-const { listarNotificaciones, marcarLeida } = require('../controllers/notificaciones.controller');
-const { notificacionIdValidator } = require('../utils/validators');
-const checkErrors = require('../utils/checkErrors');
-
+// src/routes/notificaciones.routes.js
+const express = require("express");
 const router = express.Router();
+const notificacionesController = require("../controllers/notificaciones.controller");
+const { verificarToken } = require("../middlewares/auth");
 
-router.get('/', auth, listarNotificaciones);
-router.put('/:id', auth, notificacionIdValidator, checkErrors, marcarLeida);
+router.get("/", verificarToken, notificacionesController.listarNotificaciones);
+router.put("/:id", verificarToken, notificacionesController.marcarComoLeida);
 
 module.exports = router;

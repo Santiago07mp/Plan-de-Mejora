@@ -1,47 +1,62 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { useState, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
+import Swal from "sweetalert2";
 
-function Login({ onAuth }) {
+export default function Login() {
   const [correo, setCorreo] = useState("");
-  const [contraseña, setContraseña] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await api.post("/usuarios/login", { correo, contraseña });
-      // revisar respuesta exacta del backend:
-      // debe devolver { token: "...", usuario: {...} }
-      console.log("Login response:", res.data);
+    setLoading(true);
 
-      if (res.data && res.data.token) {
-        localStorage.setItem("token", res.data.token);
-        // actualizar estado de la app (misma pestaña)
-        if (typeof onAuth === "function") onAuth();
-        navigate("/");
-      } else {
-        // si backend devuelve estructura distinta, mostrarla para debug
-        alert("Respuesta inesperada del servidor. Revisa la consola.");
-        console.log(res.data);
-      }
+    try {
+      await login(correo, password);
+      Swal.fire("Bienvenido", "Inicio de sesión exitoso", "success");
+      navigate("/dashboard");
     } catch (err) {
-      console.error("Error login:", err);
-      const msg = err?.response?.data?.error || err?.response?.data?.message || "Credenciales inválidas";
-      alert(msg);
+      Swal.fire("Error", err.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Iniciar Sesión</h2>
-      <form onSubmit={handleLogin}>
-        <input type="email" placeholder="Correo" value={correo} onChange={(e) => setCorreo(e.target.value)} />
-        <input type="password" placeholder="Contraseña" value={contraseña} onChange={(e) => setContraseña(e.target.value)} />
-        <button type="submit">Entrar</button>
+    <div className="container mt-5" style={{ maxWidth: "400px" }}>
+      <h2 className="mb-4 text-center">Iniciar Sesión</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <input 
+            className="form-control" 
+            type="email" 
+            placeholder="Correo electrónico" 
+            value={correo} 
+            onChange={e => setCorreo(e.target.value)} 
+            required 
+          />
+        </div>
+        <div className="mb-3">
+          <input 
+            className="form-control" 
+            type="password" 
+            placeholder="Contraseña" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            required 
+          />
+        </div>
+        <button className="btn btn-primary w-100" disabled={loading}>
+          {loading ? "Ingresando..." : "Ingresar"}
+        </button>
       </form>
+      <div className="mt-3 text-center">
+        <span>¿No tienes cuenta? </span>
+        <Link to="/register">Regístrate aquí</Link>
+      </div>
     </div>
   );
 }
-
-export default Login;

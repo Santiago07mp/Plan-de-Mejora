@@ -1,22 +1,34 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-function Navbar() {
+const Navbar = () => {
+  const { usuario, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
-    <nav>
-      <Link to="/">Dashboard</Link>
-      <Link to="/tareas">Tareas</Link>
-      <Link to="/notificaciones">Notificaciones</Link>
-      <Link to="/reportes">Reportes</Link>
-      <button onClick={logout}>Salir</button>
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div className="container">
+        <span className="navbar-brand">Gestor de Tareas</span>
+        
+        <div className="navbar-nav ms-auto">
+          <span className="navbar-text me-3">
+            {usuario?.nombre} ({usuario?.rol})
+          </span>
+          <button 
+            className="btn btn-outline-light btn-sm" 
+            onClick={handleLogout}
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
     </nav>
   );
-}
+};
 
 export default Navbar;

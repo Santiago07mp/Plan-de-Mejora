@@ -1,23 +1,34 @@
-const pool = require('../config/db');
+// src/controllers/notificaciones.controller.js
+const db = require("../config/db");
 
 const listarNotificaciones = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM notificaciones WHERE id_usuario_destino = ? ORDER BY fecha DESC', [req.user.id]);
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Error listando notificaciones', detalle: e.message });
+    const [notificaciones] = await db.query(
+      "SELECT * FROM notificaciones WHERE id_usuario = ? ORDER BY fecha DESC",
+      [req.usuario.id_usuario]
+    );
+    res.json(notificaciones);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al listar notificaciones" });
   }
 };
 
-const marcarLeida = async (req, res) => {
-  const { id } = req.params;
+const marcarComoLeida = async (req, res) => {
   try {
-    const [r] = await pool.query('UPDATE notificaciones SET leida = TRUE WHERE id_notificacion = ? AND id_usuario_destino = ?', [id, req.user.id]);
-    if (r.affectedRows === 0) return res.status(404).json({ error: 'No encontrada o no pertenece al usuario' });
-    res.json({ message: 'Notificación marcada como leída' });
-  } catch (e) {
-    res.status(500).json({ error: 'Error actualizando notificación', detalle: e.message });
+    const { id } = req.params;
+    await db.query(
+      "UPDATE notificaciones SET leido = true WHERE id_notificacion = ? AND id_usuario = ?",
+      [id, req.usuario.id_usuario]
+    );
+    res.json({ mensaje: "Notificación marcada como leída" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al marcar notificación" });
   }
 };
 
-module.exports = { listarNotificaciones, marcarLeida };
+module.exports = {
+  listarNotificaciones,
+  marcarComoLeida
+};

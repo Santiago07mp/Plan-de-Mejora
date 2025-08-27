@@ -1,35 +1,77 @@
+// src/components/Register.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { useNavigate, Link } from "react-router-dom";
+import Swal from "sweetalert2";
 
-function Register() {
+export default function Register() {
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
-  const [contraseña, setContraseña] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
     try {
-      await api.post("/usuarios/registro", { nombre, correo, contraseña });
-      alert("Usuario registrado con éxito");
+      const res = await fetch("http://localhost:3000/api/usuarios/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, correo, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Error al registrar usuario");
+      }
+
+      Swal.fire("Éxito", "Usuario registrado correctamente", "success");
       navigate("/login");
-    } catch {
-      alert("Error en el registro");
+    } catch (err) {
+      Swal.fire("Error", err.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h2>Registro</h2>
-      <form onSubmit={handleRegister}>
-        <input type="text" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <input type="email" placeholder="Correo" value={correo} onChange={(e) => setCorreo(e.target.value)} />
-        <input type="password" placeholder="Contraseña" value={contraseña} onChange={(e) => setContraseña(e.target.value)} />
-        <button type="submit">Registrar</button>
+    <div className="container mt-5" style={{ maxWidth: "400px" }}>
+      <h2 className="mb-4">Registrarse</h2>
+      <form onSubmit={handleSubmit}>
+        <input 
+          className="form-control mb-3" 
+          type="text" 
+          placeholder="Nombre completo" 
+          value={nombre} 
+          onChange={e => setNombre(e.target.value)} 
+          required 
+        />
+        <input 
+          className="form-control mb-3" 
+          type="email" 
+          placeholder="Correo electrónico" 
+          value={correo} 
+          onChange={e => setCorreo(e.target.value)} 
+          required 
+        />
+        <input 
+          className="form-control mb-3" 
+          type="password" 
+          placeholder="Contraseña" 
+          value={password} 
+          onChange={e => setPassword(e.target.value)} 
+          required 
+        />
+        <button className="btn btn-primary w-100" disabled={loading}>
+          {loading ? "Registrando..." : "Registrarse"}
+        </button>
       </form>
+      <div className="mt-3 text-center">
+        <span>¿Ya tienes cuenta? </span>
+        <Link to="/login">Inicia sesión aquí</Link>
+      </div>
     </div>
   );
 }
-
-export default Register;

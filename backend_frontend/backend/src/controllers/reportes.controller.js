@@ -1,22 +1,38 @@
-const pool = require('../config/db');
+// src/controllers/reportes.controller.js
+const db = require("../config/db");
 
-const reporteTareasCompletadas = async (req, res) => {
-  const { desde, hasta } = req.query;
+const generarReporteTareas = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT t.id_tarea, t.titulo, t.descripcion, t.fecha_creacion, t.fecha_vencimiento,
-              u1.nombre AS creador, u2.nombre AS asignado
-       FROM tareas t
-       JOIN usuarios u1 ON u1.id_usuario = t.id_usuario_creador
-       JOIN usuarios u2 ON u2.id_usuario = t.id_usuario_asignado
-       WHERE t.estado = 'completada' AND DATE(t.fecha_creacion) BETWEEN ? AND ?
-       ORDER BY t.fecha_creacion DESC`,
-      [desde, hasta]
-    );
-    res.json({ desde, hasta, total: rows.length, data: rows });
-  } catch (e) {
-    res.status(500).json({ error: 'Error generando reporte', detalle: e.message });
+    const { desde, hasta } = req.query;
+
+    let query = `
+      SELECT t.*, u_creador.nombre as creador, u_asignado.nombre as asignado
+      FROM tareas t
+      INNER JOIN usuarios u_creador ON t.id_usuario_creador = u_creador.id_usuario
+      INNER JOIN usuarios u_asignado ON t.id_usuario_asignado = u_asignado.id_usuario
+      WHERE t.estado = 'completada'
+    `;
+
+    const params = [];
+
+    if (desde && hasta) {
+      query += " AND DATE(t.fecha_creacion) BETWEEN ? AND ?";
+      params.push(desde, hasta);
+    }
+
+    const [tareas] = await db.query(query, params);
+
+    res.json({
+      success: true,
+      data: tareas,
+      total: tareas.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al generar el reporte" });
   }
 };
 
-module.exports = { reporteTareasCompletadas };
+module.exports = {
+  generarReporteTareas
+};

@@ -1,32 +1,31 @@
-import { useState } from "react";
-import api from "../services/api";
+import { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 
-function Reportes() {
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
-  const [datos, setDatos] = useState([]);
+export default function Reportes() {
+  const { token } = useContext(AuthContext);
+  const [reportes, setReportes] = useState([]);
 
-  const generar = async () => {
-    const res = await api.get(`/reportes/tareas?desde=${desde}&hasta=${hasta}`);
-    setDatos(res.data);
-  };
+  useEffect(() => {
+    const fetchReportes = async () => {
+      const res = await fetch("http://localhost:3000/api/reportes", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setReportes(data);
+    };
+    fetchReportes();
+  }, [token]);
 
   return (
-    <div>
-      <h2>Reporte de Tareas Completadas</h2>
-      <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-      <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-      <button onClick={generar}>Generar</button>
-
-      <ul>
-        {datos.map((d, i) => (
-          <li key={i}>
-            {d.titulo} - {d.estado}
+    <div className="container mt-5">
+      <h2>Reportes</h2>
+      <ul className="list-group">
+        {reportes.map(r => (
+          <li key={r.id} className="list-group-item">
+            {r.descripcion}
           </li>
         ))}
       </ul>
     </div>
   );
 }
-
-export default Reportes;
