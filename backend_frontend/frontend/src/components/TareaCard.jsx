@@ -1,168 +1,235 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
-import Swal from 'sweetalert2';
+import { useState } from "react";
+import Swal from "sweetalert2";
 
-const TareaCard = ({ tarea, onUpdate, usuarios }) => {
-  const { token, usuario } = useAuth();
+export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin, usuarioActual }) {
   const [editando, setEditando] = useState(false);
-  const [formData, setFormData] = useState({
-    titulo: tarea.titulo,
-    descripcion: tarea.descripcion,
-    estado: tarea.estado,
-    id_usuario_asignado: tarea.id_usuario_asignado
-  });
+  const [tareaEditada, setTareaEditada] = useState({ ...tarea });
+  const [guardando, setGuardando] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  // Verificar si el usuario actual es el asignado de la tarea
+  const esAsignadoDeTarea = usuarioActual && usuarioActual.id_usuario === tarea.id_usuario_asignado;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Verificar si el usuario actual es el creador de la tarea
+  const esCreadorDeTarea = usuarioActual && usuarioActual.id_usuario === tarea.id_usuario_creador;
+
+  // Verificar si el usuario puede eliminar la tarea (admin o creador si está asignado a sí mismo)
+  const puedeEliminarTarea = esAdmin || (esCreadorDeTarea && tarea.id_usuario_asignado === usuarioActual.id_usuario);
+
+  // Verificar si el usuario puede editar la tarea (admin o creador)
+  const puedeEditarTarea = esAdmin || esCreadorDeTarea;
+
+  const handleGuardar = async () => {
+    setGuardando(true);
     try {
-      await api.updateTarea(token, tarea.id_tarea, formData);
-      Swal.fire('Éxito', 'Tarea actualizada correctamente', 'success');
+      // Preparar datos para enviar (asegurar tipos correctos)
+      const datosActualizados = {
+        ...tareaEditada,
+        // Asegurar que id_usuario_asignado sea número si es necesario
+        id_usuario_asignado: tareaEditada.id_usuario_asignado ? 
+          parseInt(tareaEditada.id_usuario_asignado) : tareaEditada.id_usuario_asignado
+      };
+      
+      await onUpdate(tarea.id_tarea, datosActualizados);
       setEditando(false);
-      onUpdate();
     } catch (error) {
-      Swal.fire('Error', error.message, 'error');
+      console.error("Error actualizando tarea:", error);
+      Swal.fire("Error", "No se pudo actualizar la tarea", "error");
+    } finally {
+      setGuardando(false);
     }
   };
 
-  const handleDelete = async () => {
-    const result = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: "No podrás revertir esta acción",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, eliminar'
-    });
+  const handleCancelar = () => {
+    setTareaEditada({ ...tarea });
+    setEditando(false);
+  };
 
-    if (result.isConfirmed) {
-      try {
-        await api.deleteTarea(token, tarea.id_tarea);
-        Swal.fire('Eliminada', 'La tarea ha sido eliminada', 'success');
-        onUpdate();
-      } catch (error) {
-        Swal.fire('Error', error.message, 'error');
-      }
+  const handleEstadoChange = async (nuevoEstado) => {
+    try {
+      await onUpdate(tarea.id_tarea, { estado: nuevoEstado });
+      Swal.fire("Éxito", "Estado actualizado correctamente", "success");
+    } catch (error) {
+      console.error("Error cambiando estado:", error);
+      Swal.fire("Error", "No se pudo cambiar el estado", "error");
     }
   };
 
-  const puedeEditar = usuario.id_usuario === tarea.id_usuario_creador || usuario.rol === 'admin';
-  const puedeCambiarEstado = usuario.id_usuario === tarea.id_usuario_asignado;
+  // Función segura para formatear fecha
+  const formatDate = (dateString) => {
+    if (!dateString) return 'No especificada';
+    try {
+      // Manejar tanto fechas con 'T' como sin él
+      const date = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00');
+      return isNaN(date.getTime()) ? 'Fecha inválida' : date.toLocaleDateString();
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  };
+
+  // Obtener valor de fecha para input type="date"
+  const getDateInputValue = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00');
+      return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const getEstadoColor = (estado) => {
+    switch (estado) {
+      case 'completada': return 'success';
+      case 'en progreso': return 'info';
+      case 'pendiente': return 'warning';
+      default: return 'secondary';
+    }
+  };
 
   return (
-    <div className="card mb-3">
+    <div className="card h-100">
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <h6 className="mb-0">{tarea.titulo}</h6>
+        <span className={`badge bg-${getEstadoColor(tarea.estado)}`}>
+          {tarea.estado}
+        </span>
+      </div>
+      
       <div className="card-body">
         {editando ? (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-2">
+          <div>
+            <div className="mb-3">
+              <label className="form-label">Título</label>
               <input
                 type="text"
-                name="titulo"
-                value={formData.titulo}
-                onChange={handleChange}
                 className="form-control"
+                value={tareaEditada.titulo || ''}
+                onChange={(e) => setTareaEditada({...tareaEditada, titulo: e.target.value})}
                 required
               />
             </div>
-            <div className="mb-2">
+            
+            <div className="mb-3">
+              <label className="form-label">Descripción</label>
               <textarea
-                name="descripcion"
-                value={formData.descripcion}
-                onChange={handleChange}
                 className="form-control"
                 rows="3"
+                value={tareaEditada.descripcion || ''}
+                onChange={(e) => setTareaEditada({...tareaEditada, descripcion: e.target.value})}
               />
             </div>
-            <div className="mb-2">
-              <select
-                name="estado"
-                value={formData.estado}
-                onChange={handleChange}
-                className="form-select"
-                disabled={!puedeCambiarEstado}
-              >
-                <option value="pendiente">Pendiente</option>
-                <option value="en progreso">En Progreso</option>
-                <option value="completada">Completada</option>
-              </select>
+            
+            <div className="mb-3">
+              <label className="form-label">Fecha Límite</label>
+              <input
+                type="date"
+                className="form-control"
+                value={getDateInputValue(tareaEditada.fecha_vencimiento)}
+                onChange={(e) => setTareaEditada({...tareaEditada, fecha_vencimiento: e.target.value})}
+              />
             </div>
-            {usuario.rol === 'admin' && (
-              <div className="mb-2">
+            
+            {esAdmin && (
+              <div className="mb-3">
+                <label className="form-label">Asignado a</label>
                 <select
-                  name="id_usuario_asignado"
-                  value={formData.id_usuario_asignado}
-                  onChange={handleChange}
                   className="form-select"
+                  value={tareaEditada.id_usuario_asignado || ''}
+                  onChange={(e) => setTareaEditada({...tareaEditada, id_usuario_asignado: e.target.value})}
                 >
-                  {usuarios.map(user => (
-                    <option key={user.id_usuario} value={user.id_usuario}>
-                      {user.nombre}
+                  <option value="">Seleccionar usuario</option>
+                  {usuarios.map(usuario => (
+                    <option key={usuario.id_usuario} value={usuario.id_usuario}>
+                      {usuario.nombre}
                     </option>
                   ))}
                 </select>
               </div>
             )}
-            <div className="d-flex gap-2">
-              <button type="submit" className="btn btn-success btn-sm">
-                Guardar
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setEditando(false)}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+          </div>
         ) : (
-          <>
-            <h5 className="card-title">{tarea.titulo}</h5>
+          <div>
             <p className="card-text">{tarea.descripcion}</p>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <span className={`badge bg-${
-                  tarea.estado === 'completada' ? 'success' :
-                  tarea.estado === 'en progreso' ? 'warning' : 'secondary'
-                }`}>
-                  {tarea.estado}
-                </span>
-                <small className="text-muted ms-2">
-                  Asignada a: {tarea.asignado_nombre}
-                </small>
-              </div>
-              <div>
-                {puedeEditar && (
-                  <button
-                    className="btn btn-outline-primary btn-sm me-2"
-                    onClick={() => setEditando(true)}
-                  >
-                    Editar
-                  </button>
-                )}
-                {puedeEditar && (
-                  <button
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={handleDelete}
-                  >
-                    Eliminar
-                  </button>
-                )}
-              </div>
+            
+            <div className="mb-2">
+              <strong>Asignado a:</strong>{' '}
+              {usuarios.find(u => u.id_usuario === tarea.id_usuario_asignado)?.nombre || 'Desconocido'}
             </div>
-          </>
+            
+            <div className="mb-2">
+              <strong>Creado por:</strong>{' '}
+              {tarea.creador_nombre || 'Desconocido'}
+            </div>
+            
+            <div className="mb-2">
+              <strong>Fecha límite:</strong>{' '}
+              {formatDate(tarea.fecha_vencimiento)}
+            </div>
+            
+            <div className="mb-2">
+              <strong>Creado:</strong>{' '}
+              {formatDate(tarea.fecha_creacion)}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div className="card-footer">
+        {editando ? (
+          <div className="d-flex gap-2">
+            <button 
+              className="btn btn-success btn-sm" 
+              onClick={handleGuardar}
+              disabled={guardando}
+            >
+              <i className="bi bi-check"></i> {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={handleCancelar}
+              disabled={guardando}
+            >
+              <i className="bi bi-x"></i> Cancelar
+            </button>
+          </div>
+        ) : (
+          <div className="d-flex gap-2 flex-wrap">
+            {/* Botón de editar - para admin y creadores */}
+            {puedeEditarTarea && (
+              <button 
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => setEditando(true)}
+              >
+                <i className="bi bi-pencil"></i> Editar
+              </button>
+            )}
+            
+            {/* Selector de estado - solo para el usuario asignado a la tarea */}
+            {esAsignadoDeTarea && (
+              <select
+                className="form-select form-select-sm"
+                style={{ width: 'auto' }}
+                value={tarea.estado || 'pendiente'}
+                onChange={(e) => handleEstadoChange(e.target.value)}
+              >
+                <option value="pendiente">Pendiente</option>
+                <option value="en progreso">En progreso</option>
+                <option value="completada">Completada</option>
+              </select>
+            )}
+            
+            {/* Botón de eliminar - para admin y creadores de tareas propias */}
+            {puedeEliminarTarea && onDelete && (
+              <button 
+                className="btn btn-outline-danger btn-sm"
+                onClick={() => onDelete(tarea.id_tarea, tarea)}
+              >
+                <i className="bi bi-trash"></i> Eliminar
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
   );
-};
-
-export default TareaCard;
+}

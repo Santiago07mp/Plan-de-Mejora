@@ -1,13 +1,17 @@
+// src/App.jsx
 import { useAuth } from './context/AuthContext';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
+
 import Dashboard from './pages/Dashboard';
 import Tareas from './pages/Tareas';
-import Notificaciones from './pages/Notificaciones';
 import Reportes from './pages/Reportes';
+import GestionUsuarios from './pages/Gestion_Usuarios';
+import Notificaciones from './pages/Notificaciones';
+
 import './App.css';
 
 function App() {
@@ -30,6 +34,8 @@ function App() {
               !isAuthenticated ? <Register /> : <Navigate to="/dashboard" replace />
             } 
           />
+          
+          {/* Ruta para Dashboard (ambos roles) */}
           <Route 
             path="/dashboard" 
             element={
@@ -38,6 +44,8 @@ function App() {
               </PrivateRoute>
             } 
           />
+          
+          {/* Ruta para Tareas (ambos roles) */}
           <Route 
             path="/tareas" 
             element={
@@ -46,6 +54,8 @@ function App() {
               </PrivateRoute>
             } 
           />
+          
+          {/* Ruta para Notificaciones (ambos roles) */}
           <Route 
             path="/notificaciones" 
             element={
@@ -54,6 +64,7 @@ function App() {
               </PrivateRoute>
             } 
           />
+          
           <Route 
             path="/reportes" 
             element={
@@ -62,8 +73,25 @@ function App() {
               </PrivateRoute>
             } 
           />
+          
+          {/* Ruta para gestión de usuarios (solo admin) */}
+          <Route 
+            path="/admin/usuarios" 
+            element={
+              <PrivateRoute adminOnly={true}>
+                <GestionUsuarios />
+              </PrivateRoute>
+            } 
+          />
+          
           <Route 
             path="/" 
+            element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
+          />
+          
+          {/* Ruta de fallback para páginas no encontradas */}
+          <Route 
+            path="*" 
             element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
           />
         </Routes>

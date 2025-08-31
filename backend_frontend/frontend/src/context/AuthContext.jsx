@@ -11,21 +11,36 @@ export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Función para verificar si el token está expirado
+  const isTokenExpired = (token) => {
+    try {
+      if (!token) return true;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch (error) {
+      return true; // Si hay error al decodificar, considerar como expirado
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = () => {
       try {
         const token = localStorage.getItem("token");
         const usuarioData = localStorage.getItem("usuario");
         
-        if (token && usuarioData) {
-          // Verificar que el dato es un JSON válido antes de parsearlo
+        if (token && !isTokenExpired(token) && usuarioData) {
           const parsedUsuario = JSON.parse(usuarioData);
           setToken(token);
           setUsuario(parsedUsuario);
+        } else {
+          // Token expirado o inválido, limpiar
+          localStorage.removeItem("token");
+          localStorage.removeItem("usuario");
+          setToken(null);
+          setUsuario(null);
         }
       } catch (error) {
         console.error("Error parsing user data from localStorage:", error);
-        // Limpiar datos corruptos
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
         setToken(null);
@@ -75,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     usuario,
     login,
     logout,
-    isAuthenticated: !!token,
+    isAuthenticated: !!token && !isTokenExpired(token),
     isAdmin: usuario?.rol === "admin"
   };
 
