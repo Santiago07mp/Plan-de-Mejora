@@ -1,0 +1,240 @@
+/* ===== ESTILOS PARA EL FOOTER ===== */
+.app-footer {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  padding: 2.5rem 0 1rem;
+  margin-top: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2980b9, #3498db);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.footer-logo {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 1.2rem;
+  background: linear-gradient(45deg, #3498db, #2980b9, #2ecc71);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s ease-in-out infinite;
+  letter-spacing: 1px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.8rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-link {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  padding: 0.5rem 0;
+  position: relative;
+  font-size: 1rem;
+}
+
+.footer-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.footer-link:hover {
+  color: #ffffff;
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.footer-link:hover::after {
+  width: 100%;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.footer-bottom p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Efecto de partículas de fondo */
+.app-footer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(52, 152, 219, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(46, 204, 113, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(241, 196, 15, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Animaciones */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 2rem 0 1rem;
+  }
+  
+  .footer-logo {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .footer-links {
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .footer-link {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .app-footer {
+    padding: 1.5rem 0 1rem;
+  }
+  
+  .footer-logo {
+    font-size: 1.5rem;
+  }
+  
+  .footer-links {
+    gap: 1rem;
+    flex-direction: column;
+  }
+  
+  .footer-link {
+    font-size: 0.9rem;
+  }
+  
+  .footer-bottom p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Efecto de hover para el footer completo */
+.app-footer:hover::after {
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(52, 152, 219, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(46, 204, 113, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(241, 196, 15, 0.15) 0%, transparent 50%);
+  transition: all 0.5s ease;
+}
+
+/* Modo oscuro compatible */
+@media (prefers-color-scheme: dark) {
+  .app-footer {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+  
+  .footer-link {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .footer-link:hover {
+    color: #ffffff;
+  }
+}
+
+/* Efecto de transición suave para todos los elementos */
+.footer-content > * {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease forwards;
+}
+
+.footer-logo {
+  animation-delay: 0.1s;
+}
+
+.footer-links {
+  animation-delay: 0.2s;
+}
+
+.footer-bottom {
+  animation-delay: 0.3s;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mejora de accesibilidad */
+.footer-link:focus {
+  outline: 2px solid rgba(52, 152, 219, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Efecto de brillo en hover */
+.footer-link:hover {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}

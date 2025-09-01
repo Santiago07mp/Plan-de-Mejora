@@ -12,11 +12,14 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
   // Verificar si el usuario actual es el creador de la tarea
   const esCreadorDeTarea = usuarioActual && usuarioActual.id_usuario === tarea.id_usuario_creador;
 
-  // Verificar si el usuario puede eliminar la tarea (admin o creador si está asignado a sí mismo)
-  const puedeEliminarTarea = esAdmin || (esCreadorDeTarea && tarea.id_usuario_asignado === usuarioActual.id_usuario);
+  // Verificar si el usuario puede eliminar la tarea (admin o creador) - ACTUALIZADO
+  const puedeEliminarTarea = esAdmin || esCreadorDeTarea;
 
   // Verificar si el usuario puede editar la tarea (admin o creador)
   const puedeEditarTarea = esAdmin || esCreadorDeTarea;
+
+  // Verificar si el usuario puede cambiar la asignación (admin o creador)
+  const puedeCambiarAsignacion = esAdmin || esCreadorDeTarea;
 
   const handleGuardar = async () => {
     setGuardando(true);
@@ -46,7 +49,10 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
 
   const handleEstadoChange = async (nuevoEstado) => {
     try {
-      await onUpdate(tarea.id_tarea, { estado: nuevoEstado });
+      // Enviar solo el nuevo estado
+      await onUpdate(tarea.id_tarea, { 
+        estado: nuevoEstado
+      });
       Swal.fire("Éxito", "Estado actualizado correctamente", "success");
     } catch (error) {
       console.error("Error cambiando estado:", error);
@@ -58,9 +64,12 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
   const formatDate = (dateString) => {
     if (!dateString) return 'No especificada';
     try {
-      // Manejar tanto fechas con 'T' como sin él
       const date = new Date(dateString.includes('T') ? dateString : dateString + 'T00:00:00');
-      return isNaN(date.getTime()) ? 'Fecha inválida' : date.toLocaleDateString();
+      return isNaN(date.getTime()) ? 'Fecha inválida' : date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     } catch (error) {
       return 'Fecha inválida';
     }
@@ -129,21 +138,27 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
               />
             </div>
             
-            {esAdmin && (
+            {puedeCambiarAsignacion && (
               <div className="mb-3">
                 <label className="form-label">Asignado a</label>
-                <select
-                  className="form-select"
-                  value={tareaEditada.id_usuario_asignado || ''}
-                  onChange={(e) => setTareaEditada({...tareaEditada, id_usuario_asignado: e.target.value})}
-                >
-                  <option value="">Seleccionar usuario</option>
-                  {usuarios.map(usuario => (
-                    <option key={usuario.id_usuario} value={usuario.id_usuario}>
-                      {usuario.nombre}
-                    </option>
-                  ))}
-                </select>
+                {usuarios && usuarios.length > 0 ? (
+                  <select
+                    className="form-select"
+                    value={tareaEditada.id_usuario_asignado || ''}
+                    onChange={(e) => setTareaEditada({...tareaEditada, id_usuario_asignado: e.target.value})}
+                  >
+                    <option value="">Seleccionar usuario</option>
+                    {usuarios.map(usuario => (
+                      <option key={usuario.id_usuario} value={usuario.id_usuario}>
+                        {usuario.nombre}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="alert alert-warning py-2">
+                    <small>No hay usuarios disponibles para asignar</small>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -153,7 +168,7 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
             
             <div className="mb-2">
               <strong>Asignado a:</strong>{' '}
-              {usuarios.find(u => u.id_usuario === tarea.id_usuario_asignado)?.nombre || 'Desconocido'}
+              {usuarios && usuarios.find(u => u.id_usuario === tarea.id_usuario_asignado)?.nombre || 'Desconocido'}
             </div>
             
             <div className="mb-2">
@@ -170,6 +185,14 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
               <strong>Creado:</strong>{' '}
               {formatDate(tarea.fecha_creacion)}
             </div>
+
+            {/* NUEVO: Mostrar fecha de modificación si existe */}
+            {tarea.fecha_modificacion && (
+              <div className="mb-2">
+                <strong>Última modificación:</strong>{' '}
+                {formatDate(tarea.fecha_modificacion)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -218,7 +241,7 @@ export default function TareaCard({ tarea, usuarios, onUpdate, onDelete, esAdmin
               </select>
             )}
             
-            {/* Botón de eliminar - para admin y creadores de tareas propias */}
+            {/* Botón de eliminar - para admin y creadores (REQUERIMIENTO #1) */}
             {puedeEliminarTarea && onDelete && (
               <button 
                 className="btn btn-outline-danger btn-sm"

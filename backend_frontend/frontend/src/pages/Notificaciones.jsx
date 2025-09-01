@@ -24,6 +24,11 @@ export default function Notificaciones() {
   useEffect(() => {
     if (token) {
       cargarNotificaciones();
+      
+      // Configurar polling para actualizaciones periódicas (cada 30 segundos)
+      const intervalId = setInterval(cargarNotificaciones, 30000);
+      
+      return () => clearInterval(intervalId);
     }
   }, [token]);
 
@@ -31,35 +36,13 @@ export default function Notificaciones() {
     try {
       setLoading(true);
       
-      // Datos de ejemplo ya que el backend está fallando
-      const notificacionesEjemplo = [
-        {
-          id_notificacion: 1,
-          mensaje: "Tarea 'Revisar documentación' completada exitosamente",
-          leido: false,
-          fecha: new Date().toISOString()
-        },
-        {
-          id_notificacion: 2,
-          mensaje: "Nueva tarea asignada: 'Preparar informe mensual'",
-          leido: false,
-          fecha: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // Hace 2 horas
-        },
-        {
-          id_notificacion: 3,
-          mensaje: "Recordatorio: Tu tarea 'Enviar reporte' vence en 2 días",
-          leido: true,
-          fecha: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // Hace 1 día
-        },
-        {
-          id_notificacion: 4,
-          mensaje: "El administrador ha revisado tu progreso",
-          leido: false,
-          fecha: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // Hace 5 horas
-        }
-      ];
+      const response = await api.get("/notificaciones", token);
       
-      setNotificaciones(notificacionesEjemplo);
+      if (response.success) {
+        setNotificaciones(response.notificaciones || []);
+      } else {
+        throw new Error(response.error || "Error al cargar notificaciones");
+      }
       
     } catch (error) {
       console.error("Error cargando notificaciones:", error);
@@ -69,25 +52,8 @@ export default function Notificaciones() {
         return;
       }
       
-      // Mostrar notificaciones de ejemplo en caso de error
-      const notificacionesEjemplo = [
-        {
-          id_notificacion: 1,
-          mensaje: "Tarea 'Revisar documentación' completada exitosamente",
-          leido: true,
-          fecha: "2024-01-15T10:30:00"
-        },
-        {
-          id_notificacion: 2,
-          mensaje: "Nueva tarea asignada: 'Preparar informe mensual'",
-          leido: false,
-          fecha: "2024-01-16T09:15:00"
-        }
-      ];
-      
-      setNotificaciones(notificacionesEjemplo);
-      
-      Swal.fire('Info', 'Mostrando notificaciones de ejemplo', 'info');
+      Swal.fire('Error', 'No se pudieron cargar las notificaciones', 'error');
+      setNotificaciones([]);
     } finally {
       setLoading(false);
     }
@@ -95,47 +61,24 @@ export default function Notificaciones() {
 
   const marcarComoLeida = async (idNotificacion) => {
     try {
-      // Simular la marca como leída localmente ya que el backend falla
+      await api.patch(`/notificaciones/${idNotificacion}/leida`, {}, token);
+      
+      // Actualizar estado local
       setNotificaciones(prev => prev.map(notif =>
         notif.id_notificacion === idNotificacion 
-          ? { ...notif, leido: true }
+          ? { ...notif, leida: true }
           : notif
       ));
       
-      Swal.fire('Éxito', 'Notificación marcada como leída', 'success');
     } catch (error) {
       console.error("Error marcando notificación como leída:", error);
       
-      // Fallback: marcar como leída localmente aunque falle el backend
-      setNotificaciones(prev => prev.map(notif =>
-        notif.id_notificacion === idNotificacion 
-          ? { ...notif, leido: true }
-          : notif
-      ));
+      if (error.message === "TOKEN_EXPIRED" || error.message === "UNAUTHORIZED") {
+        handleTokenExpired();
+        return;
+      }
       
-      Swal.fire('Info', 'Notificación marcada como leída localmente', 'info');
-    }
-  };
-
-  const marcarTodasComoLeidas = async () => {
-    try {
-      // Simular marcar todas como leídas localmente
-      setNotificaciones(prev => prev.map(notif => ({
-        ...notif,
-        leido: true
-      })));
-      
-      Swal.fire('Éxito', 'Todas las notificaciones marcadas como leídas', 'success');
-    } catch (error) {
-      console.error("Error marcando todas como leídas:", error);
-      
-      // Fallback: marcar todas localmente
-      setNotificaciones(prev => prev.map(notif => ({
-        ...notif,
-        leido: true
-      })));
-      
-      Swal.fire('Info', 'Notificaciones marcadas como leídas localmente', 'info');
+      Swal.fire('Error', 'No se pudo marcar la notificación como leída', 'error');
     }
   };
 
@@ -167,8 +110,8 @@ export default function Notificaciones() {
     return <LoadingSpinner message="Cargando notificaciones..." />;
   }
 
-  const notificacionesPendientes = notificaciones.filter(n => !n.leido).length;
-  const notificacionesLeidas = notificaciones.filter(n => n.leido).length;
+  const notificacionesPendientes = notificaciones.filter(n => !n.leida).length;
+  const notificacionesLeidas = notificaciones.filter(n => n.leida).length;
 
   return (
     <div className="container mt-4">
@@ -229,12 +172,12 @@ export default function Notificaciones() {
               <div 
                 key={notificacion.id_notificacion} 
                 className={`list-group-item list-group-item-action ${
-                  !notificacion.leido 
+                  !notificacion.leida 
                     ? 'list-group-item-warning border-warning' 
                     : 'border-light'
                 }`}
                 style={{ 
-                  borderLeft: !notificacion.leido ? '4px solid #ffc107' : '4px solid #dee2e6',
+                  borderLeft: !notificacion.leida ? '4px solid #ffc107' : '4px solid #dee2e6',
                   transition: 'all 0.3s ease'
                 }}
               >
@@ -242,7 +185,7 @@ export default function Notificaciones() {
                   <div className="flex-grow-1 me-3">
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <h6 className="mb-0 text-dark">{notificacion.mensaje}</h6>
-                      {!notificacion.leido && (
+                      {!notificacion.leida && (
                         <span className="badge bg-warning text-dark ms-2">
                           <i className="bi bi-star-fill me-1"></i>Nuevo
                         </span>
@@ -253,7 +196,7 @@ export default function Notificaciones() {
                       {formatearFecha(notificacion.fecha)}
                     </small>
                   </div>
-                  {!notificacion.leido && (
+                  {!notificacion.leida && (
                     <button
                       className="btn btn-sm btn-outline-success"
                       onClick={() => marcarComoLeida(notificacion.id_notificacion)}
@@ -270,30 +213,6 @@ export default function Notificaciones() {
 
           {/* Acciones */}
           <div className="d-flex gap-2 flex-wrap">
-            {notificacionesPendientes > 0 && (
-              <button 
-                className="btn btn-primary"
-                onClick={() => {
-                  Swal.fire({
-                    title: '¿Marcar todas como leídas?',
-                    text: `Marcarás ${notificacionesPendientes} notificaciones como leídas`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, marcar todas',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#198754'
-                  }).then((result) => {
-                    if (result.isConfirmed) {
-                      marcarTodasComoLeidas();
-                    }
-                  });
-                }}
-              >
-                <i className="bi bi-check2-all me-2"></i>
-                Marcar todas como leídas
-              </button>
-            )}
-            
             <button 
               className="btn btn-outline-secondary"
               onClick={cargarNotificaciones}

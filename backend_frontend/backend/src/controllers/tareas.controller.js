@@ -31,10 +31,21 @@ const crearTarea = async (req, res) => {
     
     console.log("Insertando tarea en la base de datos...");
     
+    // Formatear fecha correctamente para MySQL (YYYY-MM-DD)
+    let fechaVencimientoFormateada = null;
+    if (fecha_vencimiento) {
+      // Si viene con formato ISO (con T y Z), extraer solo la parte de la fecha
+      if (fecha_vencimiento.includes('T')) {
+        fechaVencimientoFormateada = fecha_vencimiento.split('T')[0];
+      } else {
+        fechaVencimientoFormateada = fecha_vencimiento;
+      }
+    }
+    
     // Insertar la tarea con el estado por defecto 'pendiente'
     const result = await db.query(
       "INSERT INTO tareas (titulo, descripcion, fecha_vencimiento, id_usuario_creador, id_usuario_asignado, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')",
-      [titulo, descripcion, fecha_vencimiento, req.usuario.id_usuario, usuarioAsignado]
+      [titulo, descripcion, fechaVencimientoFormateada, req.usuario.id_usuario, usuarioAsignado]
     );
 
     console.log("Tarea creada exitosamente:", result);
@@ -59,7 +70,7 @@ const crearTarea = async (req, res) => {
 // Función para listar tareas
 const listarTareas = async (req, res) => {
   try {
-    console.log("Listando tareas para usuario:", req.usuario.id_usuario);
+    console.log("Listando tareas para usuario:", req.usuario.id_usuario, "rol:", req.usuario.rol);
     
     let query = `
       SELECT t.*, 
@@ -74,9 +85,9 @@ const listarTareas = async (req, res) => {
     
     let params = [];
     
-    // Si no es admin, solo ver sus tareas
+    // Si no es admin, solo ver tareas donde es creador o asignado
     if (req.usuario.rol !== 'admin') {
-      query += " WHERE t.id_usuario_asignado = ? OR t.id_usuario_creador = ?";
+      query += " WHERE t.id_usuario_creador = ? OR t.id_usuario_asignado = ?";
       params = [req.usuario.id_usuario, req.usuario.id_usuario];
     }
     
@@ -84,7 +95,7 @@ const listarTareas = async (req, res) => {
     
     const [tareas] = await db.query(query, params);
     
-    // Asegurar que los IDs sean números (problema común con MySQL y JavaScript)
+    // Asegurar que los IDs sean números
     const tareasFormateadas = tareas.map(tarea => ({
       ...tarea,
       id_tarea: parseInt(tarea.id_tarea),
@@ -99,7 +110,7 @@ const listarTareas = async (req, res) => {
   }
 };
 
-// Actualizar tarea - CORREGIDO
+// Actualizar tarea
 const actualizarTarea = async (req, res) => {
   try {
     const { id } = req.params;
@@ -141,6 +152,13 @@ const actualizarTarea = async (req, res) => {
       camposPermitidos = { estado };
     }
     
+    // Formatear fecha correctamente para MySQL (YYYY-MM-DD)
+    if (camposPermitidos.fecha_vencimiento !== undefined && camposPermitidos.fecha_vencimiento !== null) {
+      if (camposPermitidos.fecha_vencimiento.includes('T')) {
+        camposPermitidos.fecha_vencimiento = camposPermitidos.fecha_vencimiento.split('T')[0];
+      }
+    }
+    
     // Si se cambia el usuario asignado, verificar que existe y convertir a número
     if (camposPermitidos.id_usuario_asignado !== undefined) {
       const usuarioAsignadoId = parseInt(camposPermitidos.id_usuario_asignado);
@@ -166,9 +184,14 @@ const actualizarTarea = async (req, res) => {
       }
     });
     
+    // Si se cambia el estado, actualizar fecha_modificacion
+    const estadoCambiado = estado && estado !== tarea.estado;
+    
     // Solo actualizar si hay campos válidos para modificar
-    if (campos.length > 0) {
+    if (campos.length > 0 || estadoCambiado) {
+      // Siempre actualizar fecha_modificacion cuando hay cambios
       campos.push("fecha_modificacion = NOW()");
+      
       valores.push(parseInt(id));
       
       const query = `UPDATE tareas SET ${campos.join(", ")} WHERE id_tarea = ?`;
@@ -184,7 +207,7 @@ const actualizarTarea = async (req, res) => {
   }
 };
 
-// Eliminar tarea - CORREGIDO
+// Eliminar tarea
 const eliminarTarea = async (req, res) => {
   try {
     const { id } = req.params;
@@ -239,6 +262,15 @@ const asignarTarea = async (req, res) => {
     
     if (tareaExistente.length === 0) {
       return res.status(404).json({ error: "Tarea no encontrada" });
+    }
+    
+    const tarea = tareaExistente[0];
+    
+    // Verificar permisos: solo admin o creador puede reasignar
+    const esCreador = parseInt(tarea.id_usuario_creador) === parseInt(req.usuario.id_usuario);
+    
+    if (req.usuario.rol !== 'admin' && !esCreador) {
+      return res.status(403).json({ error: "No tienes permisos para reasignar esta tarea" });
     }
     
     // Verificar que el usuario asignado existe

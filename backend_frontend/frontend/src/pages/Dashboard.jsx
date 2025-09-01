@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import LoadingSpinner from "../components/LoadingSpinner";
+import "../css/Dashboard.css";
 
 export default function Dashboard() {
   const { usuario, token, isAdmin, logout, isAuthenticated } = useAuth();
@@ -66,45 +67,7 @@ export default function Dashboard() {
 
   const cargarEstadisticas = async () => {
     try {
-      // Intentar cargar datos reales primero
-      let tareasData = [];
-      try {
-        tareasData = await api.getTareas(token);
-      } catch (error) {
-        console.log("Usando datos simulados para estadísticas");
-        // Datos simulados de respaldo
-        tareasData = [
-          { 
-            id_tarea: 1, 
-            titulo: "Revisar documentación", 
-            estado: "completada", 
-            fecha_vencimiento: "2024-01-15", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          },
-          { 
-            id_tarea: 2, 
-            titulo: "Preparar reunión", 
-            estado: "pendiente", 
-            fecha_vencimiento: "2024-01-20", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          },
-          { 
-            id_tarea: 3, 
-            titulo: "Enviar reporte", 
-            estado: "en progreso", 
-            fecha_vencimiento: "2024-01-18", 
-            id_usuario_asignado: 2 
-          },
-          { 
-            id_tarea: 4, 
-            titulo: "Actualizar sistema", 
-            estado: "pendiente", 
-            fecha_vencimiento: "2024-01-22", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          }
-        ];
-      }
-
+      const tareasData = await api.getTareas(token);
       const hoy = new Date();
       
       // Estadísticas generales (solo para admin)
@@ -136,9 +99,7 @@ export default function Dashboard() {
           usuariosTotales = Array.isArray(usuariosData) ? usuariosData.length : 0;
           usuariosActivos = Array.isArray(usuariosData) ? usuariosData.filter(u => u.activo).length : 0;
         } catch (error) {
-          console.log("Usando datos simulados para usuarios");
-          usuariosActivos = 3;
-          usuariosTotales = 5;
+          console.error("Error cargando usuarios:", error);
         }
       }
 
@@ -155,23 +116,15 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error("Error cargando estadísticas:", error);
-      // No relanzar el error para que la aplicación continúe
+      throw error;
     }
   };
 
   const cargarActividadesRecientes = async () => {
     try {
-      // Usar datos por defecto ya que el endpoint /actividades/recientes no existe
-      const actividadesDefault = isAdmin ? [
-        { id: 1, tipo: 'tarea', accion: 'completada', objetivo: 'Revisar documentación', tiempo: 'Hace 2 horas' },
-        { id: 2, tipo: 'usuario', accion: 'registrado', objetivo: 'nuevo usuario', tiempo: 'Hace 5 horas' },
-        { id: 3, tipo: 'tarea', accion: 'creada', objetivo: 'Preparar reunión', tiempo: 'Ayer' }
-      ] : [
-        { id: 1, tipo: 'tarea', accion: 'completada', objetivo: 'Revisar documentación', tiempo: 'Hace 2 horas' },
-        { id: 2, tipo: 'tarea', accion: 'asignada', objetivo: 'Nueva tarea: Preparar informe', tiempo: 'Hace 4 horas' }
-      ];
-      
-      setRecentActivities(actividadesDefault);
+      // Este endpoint podría implementarse en el backend en el futuro
+      // Por ahora dejamos vacío ya que no existe el endpoint
+      setRecentActivities([]);
     } catch (error) {
       console.error("Error cargando actividades recientes:", error);
       setRecentActivities([]);
@@ -180,40 +133,7 @@ export default function Dashboard() {
 
   const cargarMisTareasRecientes = async () => {
     try {
-      let tareasData = [];
-      try {
-        tareasData = await api.getTareas(token);
-      } catch (error) {
-        console.log("Usando datos simulados para tareas recientes");
-        // Datos simulados de respaldo
-        tareasData = [
-          { 
-            id_tarea: 1, 
-            titulo: "Revisar documentación", 
-            estado: "completada", 
-            fecha_vencimiento: "2024-01-15", 
-            fecha_creacion: "2024-01-10", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          },
-          { 
-            id_tarea: 2, 
-            titulo: "Preparar reunión", 
-            estado: "pendiente", 
-            fecha_vencimiento: "2024-01-20", 
-            fecha_creacion: "2024-01-12", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          },
-          { 
-            id_tarea: 4, 
-            titulo: "Actualizar sistema", 
-            estado: "pendiente", 
-            fecha_vencimiento: "2024-01-22", 
-            fecha_creacion: "2024-01-14", 
-            id_usuario_asignado: usuario?.id_usuario || 1 
-          }
-        ];
-      }
-
+      const tareasData = await api.getTareas(token);
       const misTareas = tareasData
         .filter(t => t.id_usuario_asignado === usuario?.id_usuario)
         .sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))
@@ -234,14 +154,45 @@ export default function Dashboard() {
     return <LoadingSpinner message="Cargando dashboard..." />;
   }
 
+  // Componente para mostrar tarjetas de estadísticas
+  const StatCard = ({ title, value, color, subtitle }) => (
+    <div className="col-md-4 mb-3">
+      <div className="stat-card card text-center h-100">
+        <div className="card-body">
+          <h5 className="card-title">{title}</h5>
+          <h2 className={`text-${color}`}>{value}</h2>
+          <div className="small text-muted">{subtitle}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Componente para mostrar tarjetas de acción
+  const ActionCard = ({ icon, title, description, buttonText, link, buttonColor }) => (
+    <div className="col-md-4 mb-3">
+      <div className="card h-100 hover-lift">
+        <div className="card-body text-center">
+          <h5 className="card-title">
+            <i className={`${icon} text-${buttonColor} me-2`}></i>
+            {title}
+          </h5>
+          <p className="card-text">{description}</p>
+          <Link to={link} className={`btn btn-${buttonColor} w-100`}>
+            {buttonText}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="container">
+    <div className="container fade-in">
       {/* Header del Dashboard */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1>Dashboard {isAdmin ? "Administrador" : "Usuario"}</h1>
+          <h1 className="text-gradient">Dashboard {isAdmin ? "Administrador" : "Usuario"}</h1>
           <p className="text-muted">
-            Bienvenido/a, {usuario?.nombre}. {isAdmin ? 
+            Bienvenido/a, <strong>{usuario?.nombre}</strong>. {isAdmin ? 
               "Panel de administración del sistema" : 
               "Gestión de tus tareas y actividades"
             }
@@ -255,182 +206,135 @@ export default function Dashboard() {
       {/* Tarjetas de estadísticas */}
       <div className="row">
         {/* Estadísticas para todos los usuarios */}
-        <div className="col-md-4 mb-3">
-          <div className="card text-center h-100">
-            <div className="card-body">
-              <h5 className="card-title">Mis Tareas Pendientes</h5>
-              <h2 className="text-warning">{stats.misTareasPendientes}</h2>
-              <div className="small text-muted">Esperando realización</div>
-            </div>
-          </div>
-        </div>
+        <StatCard 
+          title="Mis Tareas Pendientes" 
+          value={stats.misTareasPendientes} 
+          color="warning" 
+          subtitle="Esperando realización" 
+        />
         
-        <div className="col-md-4 mb-3">
-          <div className="card text-center h-100">
-            <div className="card-body">
-              <h5 className="card-title">Mis Tareas Completadas</h5>
-              <h2 className="text-success">{stats.misTareasCompletadas}</h2>
-              <div className="small text-muted">Tareas finalizadas</div>
-            </div>
-          </div>
-        </div>
+        <StatCard 
+          title="Mis Tareas Completadas" 
+          value={stats.misTareasCompletadas} 
+          color="success" 
+          subtitle="Tareas finalizadas" 
+        />
         
-        <div className="col-md-4 mb-3">
-          <div className="card text-center h-100">
-            <div className="card-body">
-              <h5 className="card-title">Tareas por Vencer</h5>
-              <h2 className="text-danger">{stats.tareasPorVencer}</h2>
-              <div className="small text-muted">Próximos a vencer</div>
-            </div>
-          </div>
-        </div>
+        <StatCard 
+          title="Tareas por Vencer" 
+          value={stats.tareasPorVencer} 
+          color="danger" 
+          subtitle="Próximos a vencer" 
+        />
 
         {/* Estadísticas solo para admin */}
         {isAdmin && (
           <>
-            <div className="col-md-4 mb-3">
-              <div className="card text-center h-100">
-                <div className="card-body">
-                  <h5 className="card-title">Total Tareas</h5>
-                  <h2 className="text-primary">{stats.totalTareas}</h2>
-                  <div className="small text-muted">Gestión total de tareas</div>
-                </div>
-              </div>
-            </div>
+            <StatCard 
+              title="Total Tareas" 
+              value={stats.totalTareas} 
+              color="primary" 
+              subtitle="Gestión total de tareas" 
+            />
             
-            <div className="col-md-4 mb-3">
-              <div className="card text-center h-100">
-                <div className="card-body">
-                  <h5 className="card-title">Tareas Pendientes</h5>
-                  <h2 className="text-warning">{stats.tareasPendientes}</h2>
-                  <div className="small text-muted">Esperando realización</div>
-                </div>
-              </div>
-            </div>
+            <StatCard 
+              title="Tareas Pendientes" 
+              value={stats.tareasPendientes} 
+              color="warning" 
+              subtitle="Esperando realización" 
+            />
             
-            <div className="col-md-4 mb-3">
-              <div className="card text-center h-100">
-                <div className="card-body">
-                  <h5 className="card-title">Tareas Completadas</h5>
-                  <h2 className="text-success">{stats.tareasCompletadas}</h2>
-                  <div className="small text-muted">Tareas finalizadas</div>
-                </div>
-              </div>
-            </div>
+            <StatCard 
+              title="Tareas Completadas" 
+              value={stats.tareasCompletadas} 
+              color="success" 
+              subtitle="Tareas finalizadas" 
+            />
 
-            <div className="col-md-4 mb-3">
-              <div className="card text-center h-100">
-                <div className="card-body">
-                  <h5 className="card-title">Tareas en Progreso</h5>
-                  <h2 className="text-info">{stats.tareasEnProgreso}</h2>
-                  <div className="small text-muted">En proceso</div>
-                </div>
-              </div>
-            </div>
+            <StatCard 
+              title="Tareas en Progreso" 
+              value={stats.tareasEnProgreso} 
+              color="info" 
+              subtitle="En proceso" 
+            />
 
-            <div className="col-md-4 mb-3">
-              <div className="card text-center h-100">
-                <div className="card-body">
-                  <h5 className="card-title">Usuarios Activos</h5>
-                  <h2 className="text-primary">{stats.usuariosActivos}</h2>
-                  <div className="small text-muted">De {stats.usuariosTotales} totales</div>
-                </div>
-              </div>
-            </div>
+            <StatCard 
+              title="Usuarios Activos" 
+              value={stats.usuariosActivos} 
+              color="primary" 
+              subtitle={`De ${stats.usuariosTotales} totales`} 
+            />
           </>
         )}
       </div>
 
       {/* Sección de acciones rápidas */}
       <div className="row mt-4">
-        <div className="col-md-4 mb-3">
-          <div className="card h-100">
-            <div className="card-body text-center">
-              <h5 className="card-title">
-                <i className="bi bi-list-task text-primary me-2"></i>
-                Gestionar Tareas
-              </h5>
-              <p className="card-text">Crear, editar y asignar tareas</p>
-              <Link to="/tareas" className="btn btn-primary w-100">
-                Ir a Tareas
-              </Link>
-            </div>
-          </div>
-        </div>
+        <ActionCard 
+          icon="bi bi-list-task" 
+          title="Gestionar Tareas" 
+          description="Crear, editar y asignar tareas" 
+          buttonText="Ir a Tareas" 
+          link="/tareas" 
+          buttonColor="primary" 
+        />
 
-        {/* Acción de Notificaciones para TODOS los usuarios */}
-        <div className="col-md-4 mb-3">
-          <div className="card h-100">
-            <div className="card-body text-center">
-              <h5 className="card-title">
-                <i className="bi bi-bell text-info me-2"></i>
-                Notificaciones
-              </h5>
-              <p className="card-text">Revisar tus notificaciones</p>
-              <Link to="/notificaciones" className="btn btn-info w-100">
-                Ver Notificaciones
-              </Link>
-            </div>
-          </div>
-        </div>
+        <ActionCard 
+          icon="bi bi-bell" 
+          title="Notificaciones" 
+          description="Revisar tus notificaciones" 
+          buttonText="Ver Notificaciones" 
+          link="/notificaciones" 
+          buttonColor="info" 
+        />
 
         {/* Acciones solo para admin */}
         {isAdmin && (
           <>
-            <div className="col-md-4 mb-3">
-              <div className="card h-100">
-                <div className="card-body text-center">
-                  <h5 className="card-title">
-                    <i className="bi bi-graph-up text-success me-2"></i>
-                    Reportes
-                  </h5>
-                  <p className="card-text">Generar reportes de tareas</p>
-                  <Link to="/reportes" className="btn btn-success w-100">
-                    Generar Reportes
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <ActionCard 
+              icon="bi bi-graph-up" 
+              title="Reportes" 
+              description="Generar reportes de tareas" 
+              buttonText="Generar Reportes" 
+              link="/reportes" 
+              buttonColor="success" 
+            />
             
-            <div className="col-md-4 mb-3">
-              <div className="card h-100">
-                <div className="card-body text-center">
-                  <h5 className="card-title">
-                    <i className="bi bi-people text-warning me-2"></i>
-                    Gestión de Usuarios
-                  </h5>
-                  <p className="card-text">Administrar usuarios del sistema</p>
-                  <Link to="/admin/usuarios" className="btn btn-warning w-100">
-                    Gestionar Usuarios
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <ActionCard 
+              icon="bi bi-people" 
+              title="Gestión de Usuarios" 
+              description="Administrar usuarios del sistema" 
+              buttonText="Gestionar Usuarios" 
+              link="/admin/usuarios" 
+              buttonColor="warning" 
+            />
           </>
         )}
       </div>
 
-      {/* Sección de Mis Tareas Recientes (para todos los usuarios) */}
+      {/* Sección de Mis Tareas Recientes y Actividad */}
       <div className="row mt-4">
+        {/* Mis Tareas Recientes (para todos los usuarios) */}
         <div className="col-md-6">
           <div className="card h-100">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="card-title mb-0">Mis Tareas Recientes</h5>
+              <span className="badge bg-primary">{misTareasRecientes.length}</span>
             </div>
             <div className="card-body">
               {misTareasRecientes.length > 0 ? (
                 <div className="list-group">
                   {misTareasRecientes.map(tarea => (
-                    <div key={tarea.id_tarea} className="list-group-item">
+                    <div key={tarea.id_tarea} className="list-group-item slide-in">
                       <div className="d-flex w-100 justify-content-between align-items-center">
                         <div>
                           <h6 className="mb-1">{tarea.titulo}</h6>
-                          <small className={`badge bg-${
+                          <span className={`badge bg-${
                             tarea.estado === 'completada' ? 'success' :
                             tarea.estado === 'en progreso' ? 'info' : 'warning'
                           }`}>
                             {tarea.estado}
-                          </small>
+                          </span>
                         </div>
                         <small className="text-muted">
                           {tarea.fecha_vencimiento ? 
@@ -443,7 +347,10 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted">No tienes tareas recientes</p>
+                <div className="text-center py-4">
+                  <i className="bi bi-inbox display-4 text-muted"></i>
+                  <p className="mt-2 text-muted">No tienes tareas recientes</p>
+                </div>
               )}
             </div>
             <div className="card-footer">
@@ -464,7 +371,7 @@ export default function Dashboard() {
               {recentActivities.length > 0 ? (
                 <div className="list-group">
                   {recentActivities.map(actividad => (
-                    <div key={actividad.id} className="list-group-item">
+                    <div key={actividad.id} className="list-group-item slide-in">
                       <div className="d-flex w-100 justify-content-between">
                         <div>
                           <h6 className="mb-1">
@@ -484,7 +391,10 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted">No hay actividad reciente</p>
+                <div className="text-center py-4">
+                  <i className="bi bi-activity display-4 text-muted"></i>
+                  <p className="mt-2 text-muted">No hay actividad reciente</p>
+                </div>
               )}
             </div>
           </div>

@@ -42,6 +42,13 @@ export default function Reportes() {
     }
   };
 
+  // Función para formatear fechas a formato YYYY-MM-DD para comparación
+  const formatDateForComparison = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
   // Filtrar tareas según los criterios seleccionados (solo tareas completadas)
   const tareasFiltradas = tareas.filter(tarea => {
     // Solo mostrar tareas completadas
@@ -54,17 +61,36 @@ export default function Reportes() {
       return false;
     }
     
-    // Filtro por fecha de creación
-    if (fechaInicio && new Date(tarea.fecha_creacion) < new Date(fechaInicio)) {
+    // Obtener fecha de modificación (cuando se completó la tarea)
+    const fechaCompletada = formatDateForComparison(tarea.fecha_modificacion);
+    
+    // Filtro por fecha de inicio
+    if (fechaInicio && fechaCompletada < fechaInicio) {
       return false;
     }
     
-    if (fechaFin && new Date(tarea.fecha_creacion) > new Date(fechaFin + "T23:59:59")) {
+    // Filtro por fecha de fin
+    if (fechaFin && fechaCompletada > fechaFin) {
       return false;
     }
     
     return true;
   });
+
+  const validarFechas = () => {
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      Swal.fire("Error", "La fecha de inicio no puede ser mayor que la fecha de fin", "error");
+      return false;
+    }
+    return true;
+  };
+
+  const aplicarFiltros = () => {
+    if (!validarFechas()) {
+      return;
+    }
+    // El filtrado se realiza automáticamente a través del estado
+  };
 
   const exportarCSV = () => {
     if (tareasFiltradas.length === 0) {
@@ -77,7 +103,7 @@ export default function Reportes() {
     
     // Datos
     tareasFiltradas.forEach(tarea => {
-      csvContent += `"${tarea.titulo || ''}","${tarea.descripcion || ''}",${tarea.asignado_nombre || ''},${tarea.creador_nombre || ''},${tarea.fecha_creacion || ''},${tarea.fecha_vencimiento || ''},${tarea.fecha_completada || ''}\n`;
+      csvContent += `"${tarea.titulo || ''}","${tarea.descripcion || ''}",${tarea.asignado_nombre || ''},${tarea.creador_nombre || ''},${tarea.fecha_creacion || ''},${tarea.fecha_vencimiento || ''},${tarea.fecha_modificacion || ''}\n`;
     });
     
     // Crear y descargar archivo
@@ -110,7 +136,13 @@ export default function Reportes() {
     doc.text("Reporte de Tareas Completadas", 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 30);
+    
+    // Información del rango de fechas
+    let fechaInfo = "Todas las fechas";
+    if (fechaInicio || fechaFin) {
+      fechaInfo = `${fechaInicio || 'Inicio'} - ${fechaFin || 'Fin'}`;
+    }
+    doc.text(`Período: ${fechaInfo} | Generado el: ${new Date().toLocaleDateString()}`, 14, 30);
     
     // Preparar datos para la tabla
     const tableData = tareasFiltradas.map(tarea => [
@@ -119,12 +151,12 @@ export default function Reportes() {
       tarea.creador_nombre || '',
       tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString() : '',
       tarea.fecha_vencimiento ? new Date(tarea.fecha_vencimiento).toLocaleDateString() : '',
-      tarea.fecha_completada ? new Date(tarea.fecha_completada).toLocaleDateString() : 'N/A'
+      tarea.fecha_modificacion ? new Date(tarea.fecha_modificacion).toLocaleDateString() : 'N/A'
     ]);
     
     // Crear tabla usando autoTable
     autoTable(doc, {
-      startY: 40,
+      startY: 45,
       head: [['Título', 'Asignado a', 'Creado por', 'Fecha Creación', 'Fecha Vencimiento', 'Fecha Completada']],
       body: tableData,
       theme: 'grid',
@@ -252,7 +284,7 @@ export default function Reportes() {
               </select>
             </div>
             <div className="col-md-4">
-              <label htmlFor="fechaInicio" className="form-label">Fecha Inicio (Creación)</label>
+              <label htmlFor="fechaInicio" className="form-label">Fecha Inicio (Completadas)</label>
               <input
                 type="date"
                 id="fechaInicio"
@@ -262,7 +294,7 @@ export default function Reportes() {
               />
             </div>
             <div className="col-md-4">
-              <label htmlFor="fechaFin" className="form-label">Fecha Fin (Creación)</label>
+              <label htmlFor="fechaFin" className="form-label">Fecha Fin (Completadas)</label>
               <input
                 type="date"
                 id="fechaFin"
@@ -274,6 +306,12 @@ export default function Reportes() {
           </div>
           <div className="row mt-3">
             <div className="col-12 text-end">
+              <button 
+                className="btn btn-primary me-2"
+                onClick={aplicarFiltros}
+              >
+                <i className="bi bi-funnel me-1"></i> Aplicar Filtros
+              </button>
               <button 
                 className="btn btn-outline-secondary"
                 onClick={() => {
@@ -320,7 +358,7 @@ export default function Reportes() {
                       <td>{tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString() : ''}</td>
                       <td>{tarea.fecha_vencimiento ? new Date(tarea.fecha_vencimiento).toLocaleDateString() : ''}</td>
                       <td>
-                        {tarea.fecha_completada ? new Date(tarea.fecha_completada).toLocaleDateString() : 'N/A'}
+                        {tarea.fecha_modificacion ? new Date(tarea.fecha_modificacion).toLocaleDateString() : 'N/A'}
                       </td>
                     </tr>
                   ))}

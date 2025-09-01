@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer'; // Importar el Footer
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -18,9 +19,10 @@ function App() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="App">
+    <div className="App d-flex flex-column min-vh-100">
       {isAuthenticated && <Navbar />}
-      <div className="container-fluid mt-3">
+      
+      <main className="flex-grow-1 container-fluid mt-3">
         <Routes>
           <Route 
             path="/login" 
@@ -95,7 +97,10 @@ function App() {
             element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
           />
         </Routes>
-      </div>
+      </main>
+
+      {/* Footer que se muestra en todas las páginas */}
+      <Footer />
     </div>
   );
 }

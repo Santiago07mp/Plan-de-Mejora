@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
+import "../css/login_register.css";
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
@@ -26,12 +27,12 @@ export default function Login() {
   };
 
   return (
-    <div className="container mt-5" style={{ maxWidth: "400px" }}>
-      <h2 className="mb-4 text-center">Iniciar Sesión</h2>
-      <form onSubmit={handleSubmit}>
+    <div className="container mt-5 auth-container">
+      <h2 className="mb-4 text-center auth-title">Iniciar Sesión</h2>
+      <form onSubmit={handleSubmit} className="auth-form">
         <div className="mb-3">
           <input 
-            className="form-control" 
+            className="form-control auth-input" 
             type="email" 
             placeholder="Correo electrónico" 
             value={correo} 
@@ -41,7 +42,7 @@ export default function Login() {
         </div>
         <div className="mb-3">
           <input 
-            className="form-control" 
+            className="form-control auth-input" 
             type="password" 
             placeholder="Contraseña" 
             value={password} 
@@ -49,13 +50,13 @@ export default function Login() {
             required 
           />
         </div>
-        <button className="btn btn-primary w-100" disabled={loading}>
-          {loading ? "Ingresando..." : "Ingresar"}
+        <button className="btn btn-primary w-100 auth-button" disabled={loading}>
+          {loading ? (<><span className="loading-state"></span> Ingresando...</>) : "Ingresar"}
         </button>
       </form>
-      <div className="mt-3 text-center">
+      <div className="mt-3 text-center auth-link-container">
         <span>¿No tienes cuenta? </span>
-        <Link to="/register">Regístrate aquí</Link>
+        <Link to="/register" className="auth-link">Regístrate aquí</Link>
       </div>
     </div>
   );

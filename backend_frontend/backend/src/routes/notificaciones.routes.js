@@ -5,6 +5,6 @@ const notificacionesController = require("../controllers/notificaciones.controll
 const { verificarToken } = require("../middlewares/auth");
 
 router.get("/", verificarToken, notificacionesController.listarNotificaciones);
-router.put("/:id", verificarToken, notificacionesController.marcarComoLeida);
+router.patch("/:id/leida", verificarToken, notificacionesController.marcarComoLeida);
 
 module.exports = router;

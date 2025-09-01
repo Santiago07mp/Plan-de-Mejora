@@ -3,10 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import Swal from "sweetalert2";
 import TareaCard from "../components/TareaCard";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Tareas() {
-  const { token, usuario, isAdmin } = useAuth();
+  const { token, usuario, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
   const [tareas, setTareas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,13 +29,29 @@ export default function Tareas() {
   const cargarTareasYUsuarios = async () => {
     try {
       setLoading(true);
-      const [tareasData, usuariosData] = await Promise.all([
-        api.getTareas(token),
-        api.getUsers(token)
-      ]);
-
+      
+      // Cargar tareas
+      const tareasData = await api.getTareas(token);
       setTareas(Array.isArray(tareasData) ? tareasData : []);
-      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+      
+      // Intentar cargar usuarios, pero si falla continuar sin ellos
+      try {
+        const usuariosData = await api.getUsers(token);
+        setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+      } catch (error) {
+        console.warn("No se pudieron cargar los usuarios:", error);
+        setUsuarios([]);
+        
+        // Mostrar advertencia solo si no es error de autenticación
+        if (error.message !== "UNAUTHORIZED" && error.message !== "TOKEN_EXPIRED") {
+          Swal.fire({
+            title: "Aviso",
+            text: "No se pudo cargar la lista de usuarios. Podrás crear tareas pero no asignarlas a otros usuarios.",
+            icon: "info",
+            confirmButtonText: "Entendido"
+          });
+        }
+      }
     } catch (error) {
       console.error("Error cargando datos:", error);
       
@@ -44,9 +61,12 @@ export default function Tareas() {
           text: "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
           icon: "warning",
           confirmButtonText: "Iniciar sesión"
+        }).then(() => {
+          logout();
+          navigate('/login');
         });
       } else {
-        Swal.fire("Error", "No se pudieron cargar los datos", "error");
+        Swal.fire("Error", "No se pudieron cargar las tareas", "error");
       }
       
       setTareas([]);
@@ -65,12 +85,13 @@ export default function Tareas() {
         descripcion: nuevaTarea.descripcion,
         fecha_vencimiento: nuevaTarea.fecha_vencimiento,
         id_usuario_asignado: nuevaTarea.id_usuario_asignado || usuario.id_usuario
-        // El backend ya añade automáticamente id_usuario_creador desde el token
       };
       
       const response = await api.post("/tareas", datosTarea, token);
       
       // Agregar la nueva tarea al estado local inmediatamente
+      const usuarioAsignado = usuarios.find(u => u.id_usuario === parseInt(datosTarea.id_usuario_asignado)) || usuario;
+      
       const nuevaTareaCompleta = {
         id_tarea: response.id_tarea || Date.now(),
         ...datosTarea,
@@ -78,7 +99,7 @@ export default function Tareas() {
         fecha_creacion: new Date().toISOString(),
         id_usuario_creador: usuario.id_usuario,
         creador_nombre: usuario.nombre,
-        asignado_nombre: usuarios.find(u => u.id_usuario === datosTarea.id_usuario_asignado)?.nombre || usuario.nombre
+        asignado_nombre: usuarioAsignado.nombre
       };
       
       setTareas(prevTareas => [nuevaTareaCompleta, ...prevTareas]);
@@ -127,6 +148,9 @@ export default function Tareas() {
           text: "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
           icon: "warning",
           confirmButtonText: "Iniciar sesión"
+        }).then(() => {
+          logout();
+          navigate('/login');
         });
       } else {
         Swal.fire("Error", error.message || "Error al eliminar la tarea", "error");
@@ -164,6 +188,9 @@ export default function Tareas() {
           text: "Tu sesión ha expirado. Por favor, inicia sesión nuevamente.",
           icon: "warning",
           confirmButtonText: "Iniciar sesión"
+        }).then(() => {
+          logout();
+          navigate('/login');
         });
       } else {
         Swal.fire("Error", error.message || "Error al actualizar la tarea", "error");
@@ -309,153 +336,137 @@ export default function Tareas() {
                 type="text"
                 id="busqueda"
                 className="form-control"
-                placeholder="Buscar por título o descripción..."
+                placeholder="Buscar en títulos y descripciones..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
             </div>
           </div>
-          <div className="row mt-2">
-            <div className="col-12 text-end">
-              <button 
-                className="btn btn-outline-secondary"
-                onClick={() => {
-                  setFiltroEstado("todos");
-                  setFiltroUsuario("todos");
-                  setBusqueda("");
-                }}
-              >
-                <i className="bi bi-x-circle me-1"></i> Limpiar Filtros
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
+      {/* Modal para crear tarea */}
       {showCrearTarea && (
-        <div className="card mb-4">
-          <div className="card-header bg-primary text-white">
-            <h5 className="mb-0">Crear Nueva Tarea</h5>
-          </div>
-          <div className="card-body">
-            <form onSubmit={handleCrearTarea}>
-              <div className="row">
-                <div className="col-md-12 mb-3">
-                  <label htmlFor="titulo" className="form-label">Título *</label>
-                  <input
-                    type="text"
-                    id="titulo"
-                    className="form-control"
-                    placeholder="Título de la tarea"
-                    value={nuevaTarea.titulo}
-                    onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="descripcion" className="form-label">Descripción</label>
-                <textarea
-                  id="descripcion"
-                  className="form-control"
-                  placeholder="Descripción detallada de la tarea"
-                  value={nuevaTarea.descripcion}
-                  onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
-                  rows="3"
-                />
-              </div>
-              
-              <div className="row">
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="usuarioAsignado" className="form-label">Usuario Asignado</label>
-                  <select
-                    id="usuarioAsignado"
-                    className="form-select"
-                    value={nuevaTarea.id_usuario_asignado}
-                    onChange={(e) => setNuevaTarea({...nuevaTarea, id_usuario_asignado: e.target.value})}
-                  >
-                    <option value="">Seleccionar usuario (opcional)</option>
-                    {usuarios.map(usuario => (
-                      <option key={usuario.id_usuario} value={usuario.id_usuario}>
-                        {usuario.nombre} ({usuario.correo})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="form-text">
-                    Si no selecciona un usuario, la tarea se asignará a usted mismo.
-                  </div>
-                </div>
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="fecha_vencimiento" className="form-label">Fecha Límite</label>
-                  <input
-                    type="date"
-                    id="fecha_vencimiento"
-                    className="form-control"
-                    value={nuevaTarea.fecha_vencimiento}
-                    onChange={(e) => setNuevaTarea({...nuevaTarea, fecha_vencimiento: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              <div className="d-flex gap-2">
-                <button type="submit" className="btn btn-success">
-                  <i className="bi bi-check-circle"></i> Crear Tarea
-                </button>
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Crear Nueva Tarea</h5>
                 <button 
                   type="button" 
-                  className="btn btn-secondary"
+                  className="btn-close" 
                   onClick={() => setShowCrearTarea(false)}
-                >
-                  <i className="bi bi-x-circle"></i> Cancelar
-                </button>
+                ></button>
               </div>
-            </form>
+              <form onSubmit={handleCrearTarea}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label htmlFor="titulo" className="form-label">Título *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="titulo"
+                      value={nuevaTarea.titulo}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, titulo: e.target.value})}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label htmlFor="descripcion" className="form-label">Descripción</label>
+                    <textarea
+                      className="form-control"
+                      id="descripcion"
+                      rows="3"
+                      value={nuevaTarea.descripcion}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label htmlFor="fecha_vencimiento" className="form-label">Fecha Límite</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      id="fecha_vencimiento"
+                      value={nuevaTarea.fecha_vencimiento}
+                      onChange={(e) => setNuevaTarea({...nuevaTarea, fecha_vencimiento: e.target.value})}
+                    />
+                  </div>
+                  
+                  {usuarios.length > 0 && (
+                    <div className="mb-3">
+                      <label htmlFor="id_usuario_asignado" className="form-label">Asignar a</label>
+                      <select
+                        className="form-select"
+                        id="id_usuario_asignado"
+                        value={nuevaTarea.id_usuario_asignado}
+                        onChange={(e) => setNuevaTarea({...nuevaTarea, id_usuario_asignado: e.target.value})}
+                      >
+                        <option value="">Seleccionar usuario (opcional)</option>
+                        {usuarios.map(usuario => (
+                          <option key={usuario.id_usuario} value={usuario.id_usuario}>
+                            {usuario.nombre} ({usuario.rol})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="form-text">
+                        Si no seleccionas un usuario, la tarea se asignará automáticamente a ti.
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowCrearTarea(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Crear Tarea
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header">
-          <h5 className="mb-0">
-            Lista de Tareas 
-            <span className="badge bg-primary ms-2">{tareasFiltradas.length}</span>
-          </h5>
+      {/* Lista de tareas */}
+      {tareasFiltradas.length === 0 ? (
+        <div className="text-center py-5">
+          <i className="bi bi-inbox display-1 text-muted"></i>
+          <h3 className="mt-3">No hay tareas</h3>
+          <p className="text-muted">
+            {busqueda || filtroEstado !== "todos" || filtroUsuario !== "todos" 
+              ? "No se encontraron tareas con los filtros aplicados."
+              : "Comienza creando tu primera tarea."}
+          </p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCrearTarea(true)}
+          >
+            Crear Primera Tarea
+          </button>
         </div>
-        <div className="card-body">
-          {Array.isArray(tareasFiltradas) && tareasFiltradas.length > 0 ? (
-            <div className="row">
-              {tareasFiltradas.map(tarea => (
-                <div key={tarea.id_tarea} className="col-md-6 col-lg-4 mb-3">
-                  <TareaCard 
-                    tarea={tarea} 
-                    usuarios={usuarios}
-                    onUpdate={handleActualizarTarea}
-                    onDelete={handleEliminarTarea}
-                    esAdmin={isAdmin}
-                    usuarioActual={usuario}
-                  />
-                </div>
-              ))}
+      ) : (
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+          {tareasFiltradas.map(tarea => (
+            <div key={tarea.id_tarea} className="col">
+              <TareaCard
+                tarea={tarea}
+                usuarios={usuarios}
+                onUpdate={handleActualizarTarea}
+                onDelete={handleEliminarTarea}
+                esAdmin={isAdmin}
+                usuarioActual={usuario}
+              />
             </div>
-          ) : (
-            <div className="text-center py-4">
-              <i className="bi bi-inbox display-4 text-muted"></i>
-              <p className="mt-3 text-muted">No hay tareas que coincidan con los filtros seleccionados.</p>
-              <button 
-                className="btn btn-primary mt-2"
-                onClick={() => {
-                  setFiltroEstado("todos");
-                  setFiltroUsuario("todos");
-                  setBusqueda("");
-                }}
-              >
-                <i className="bi bi-arrow-clockwise"></i> Restablecer filtros
-              </button>
-            </div>
-          )}
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
